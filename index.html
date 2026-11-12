@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algorithmic Art & Chaos Lab — Simulador de Sistemas Complexos</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #07080d;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: rgba(15, 18, 28, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #1e293b;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -5px;
+      background: #a855f7;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-purple-500 selection:text-white">
+
+  <div id="artToastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <header class="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-amber-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-gradient-to-r from-purple-300 via-pink-300 to-amber-200 bg-clip-text text-transparent">
+            Algorithmic Art & Chaos Lab
+          </h1>
+          <p class="text-xs text-slate-400">Campos de Fluxo • Atratores Caóticos • Autômatos Celulares • Fractais</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+        <button type="button" data-engine="flow" class="engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 transition">
+          🌊 Campo de Fluxo
+        </button>
+        <button type="button" data-engine="attractor" class="engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          🦋 Atrator de Clifford
+        </button>
+        <button type="button" data-engine="life" class="engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          🧬 Game of Life
+        </button>
+        <button type="button" data-engine="phyllo" class="engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+          🌻 Filotaxia Áurea
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="pauseResumeBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          Pausar
+        </button>
+        <button id="exportPngBtn" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-md shadow-purple-500/20 transition">
+          📸 Exportar PNG
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-8 glass-card rounded-2xl p-3 sm:p-4 flex flex-col justify-between relative">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="engineStatusTitle" class="text-xs font-semibold text-slate-200">Campo Vetorial Trigonométrico (2.000 Partículas)</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs font-mono-code text-slate-400">
+          <span id="fpsCounter">60 FPS</span>
+          <span>•</span>
+          <span id="interactionHint" class="text-purple-300">Arraste o mouse no Canvas para interagir</span>
+        </div>
+      </div>
+
+      <div class="relative w-full h-[380px] sm:h-[480px] rounded-xl overflow-hidden bg-black border border-slate-800/90">
+        <canvas id="artCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+      </div>
+
+      <div class="mt-3 pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-slate-400">Paleta de Cores:</span>
+          <button type="button" data-palette="cyberpunk" class="palette-btn px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 font-medium">Cyberpunk</button>
+          <button type="button" data-palette="aurora" class="palette-btn px-2.5 py-1 rounded-lg bg-slate-900 text-emerald-300 border border-slate-800 hover:border-emerald-500/40">Aurora Boreal</button>
+          <button type="button" data-palette="solar" class="palette-btn px-2.5 py-1 rounded-lg bg-slate-900 text-amber-300 border border-slate-800 hover:border-amber-500/40">Chama Solar</button>
+          <button type="button" data-palette="mono" class="palette-btn px-2.5 py-1 rounded-lg bg-slate-900 text-slate-200 border border-slate-800 hover:border-slate-500">Monocromático</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="clearCanvasBtn" type="button" class="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition">
+            Limpar Tela
+          </button>
+          <button id="mutateParamsBtn" type="button" class="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-medium transition">
+            🎲 Mutação Aleatória
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-4 flex flex-col gap-5">
+      <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <h2 class="text-sm font-semibold text-slate-200 mb-1">🎛️ Parâmetros Matemáticos</h2>
+        <p class="text-xs text-slate-400 mb-4">Ajuste as variáveis em tempo real para esculpir os padrões emergentes</p>
+
+        <div class="space-y-4">
+          <div class="p-3 rounded-xl bg-slate-900/75 border border-slate-800">
+            <div class="flex justify-between text-xs mb-1">
+              <span id="param1Label" class="font-medium text-slate-200">Escala de Frequência Espacial</span>
+              <span id="param1Value" class="font-mono-code text-purple-300">0.008</span>
+            </div>
+            <input id="param1Slider" type="range" min="1" max="100" value="35" class="w-full" />
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/75 border border-slate-800">
+            <div class="flex justify-between text-xs mb-1">
+              <span id="param2Label" class="font-medium text-slate-200">Velocidade / Turbulência</span>
+              <span id="param2Value" class="font-mono-code text-pink-300">2.4</span>
+            </div>
+            <input id="param2Slider" type="range" min="1" max="100" value="48" class="w-full" />
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/75 border border-slate-800">
+            <div class="flex justify-between text-xs mb-1">
+              <span id="param3Label" class="font-medium text-slate-200">Persistência do Rastro</span>
+              <span id="param3Value" class="font-mono-code text-cyan-300">94%</span>
+            </div>
+            <input id="param3Slider" type="range" min="1" max="100" value="94" class="w-full" />
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-900/75 border border-slate-800">
+            <div class="flex justify-between text-xs mb-1">
+              <span id="param4Label" class="font-medium text-slate-200">Densidade / Harmônico C</span>
+              <span id="param4Value" class="font-mono-code text-emerald-300">65</span>
+            </div>
+            <input id="param4Slider" type="range" min="1" max="100" value="65" class="w-full" />
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800">
+          <span class="text-xs font-medium text-slate-400 block mb-2">Sementes & Padrões Clássicos:</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-seed="1" class="seed-btn py-1.5 px-2 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-purple-300 border border-slate-800 transition">
+              Semente α
+            </button>
+            <button type="button" data-seed="2" class="seed-btn py-1.5 px-2 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-pink-300 border border-slate-800 transition">
+              Semente β
+            </button>
+            <button type="button" data-seed="3" class="seed-btn py-1.5 px-2 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 transition">
+              Semente Ω
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-4 sm:p-5 flex-1 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold text-slate-200">📐 Equação Geradora Ativa</h2>
+            <span class="text-[10px] font-mono-code uppercase px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/50">Tempo Real</span>
+          </div>
+          <div id="formulaBox" class="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono-code text-xs text-cyan-300 leading-relaxed mb-3">
+            θ(x,y,t) = sin(x·s + t) · cos(y·s - t) · 2π
+          </div>
+          <p id="theoryDescription" class="text-xs text-slate-400 leading-relaxed">
+            Milhares de partículas autônomas seguem vetores tangentes definidos por um campo escalar trigonométrico contínuo. O movimento do mouse injeta vórtices locais.
+          </p>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Resolução Nativa do Canvas</span>
+          <span id="canvasResolutionReadout" class="font-mono-code text-slate-300">800 × 480 px</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800/80 bg-slate-950/60 py-3 px-4 sm:px-6 text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <span>Algorithmic Art & Chaos Lab • Criado para exploração visual de matemática e código criativo</span>
+      <span class="font-mono-code">Atalhos: [Espaço] Pausar • [R] Mutação Aleatória • [C] Limpar Tela</span>
+    </div>
+  </footer>
+
+  <script>
+    const canvas = document.getElementById('artCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const palettes = {
+      cyberpunk: ['#06b6d4', '#8b5cf6', '#ec4899', '#38bdf8', '#f472b6'],
+      aurora: ['#10b981', '#06b6d4', '#34d399', '#2dd4bf', '#818cf8'],
+      solar: ['#f59e0b', '#ef4444', '#fbbf24', '#f97316', '#fde047'],
+      mono: ['#f8fafc', '#cbd5e1', '#94a3b8', '#e2e8f0', '#64748b']
+    };
+
+    const appState = {
+      engine: 'flow',
+      running: true,
+      palette: 'cyberpunk',
+      p1: 35,
+      p2: 48,
+      p3: 94,
+      p4: 65,
+      tick: 0,
+      mouse: { x: -9999, y: -9999, down: false }
+    };
+
+    let particles = [];
+    let lifeGrid = [];
+    let lifeCols = 0;
+    let lifeRows = 0;
+    const cellSize = 8;
+    let attractorPoint = { x: 0.1, y: 0.1 };
+
+    function notifyToast(text) {
+      const box = document.getElementById('artToastContainer');
+      if (!box) return;
+      const el = document.createElement('div');
+      el.className = 'px-3.5 py-2 rounded-xl bg-slate-900/95 border border-purple-500/40 text-xs text-purple-200 shadow-lg transition-all duration-300';
+      el.textContent = text;
+      box.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 2400);
+    }
+
+    function resizeStage() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = Math.max(320, Math.floor(rect.width));
+      canvas.height = Math.max(280, Math.floor(rect.height));
+      document.getElementById('canvasResolutionReadout').textContent = `${canvas.width} × ${canvas.height} px`;
+      clearCanvasBackground();
+      initFlowParticles();
+      initGameOfLife(true);
+    }
+
+    function clearCanvasBackground() {
+      ctx.fillStyle = '#05060a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      attractorPoint = { x: 0.1, y: 0.1 };
+      appState.tick = 0;
+    }
+
+    function initFlowParticles() {
+      const count = 800 + Math.floor(appState.p4 * 18);
+      particles = [];
+      const colors = palettes[appState.palette];
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          color: colors[i % colors.length],
+          speed: 0.7 + Math.random() * 1.4
+        });
+      }
+    }
+
+    function stepFlowField() {
+      const fadeAlpha = Math.max(0.01, (101 - appState.p3) / 450);
+      ctx.fillStyle = `rgba(5, 6, 10, ${fadeAlpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const scale = 0.002 + (appState.p1 / 100) * 0.022;
+      const speedMult = 0.5 + (appState.p2 / 100) * 4.0;
+      const harmonic = 1.5 + (appState.p4 / 100) * 5.0;
+      const t = appState.tick * 0.006;
+
+      ctx.lineWidth = 1.3;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const prevX = p.x;
+        const prevY = p.y;
+
+        let angle = (
+          Math.sin(p.x * scale + t) +
+          Math.cos(p.y * scale * 1.3 - t) +
+          Math.sin((p.x + p.y) * scale * 0.5)
+        ) * harmonic;
+
+        const dx = p.x - appState.mouse.x;
+        const dy = p.y - appState.mouse.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < 18000) {
+          angle += Math.atan2(dy, dx) + 1.2;
+        }
+
+        p.x += Math.cos(angle) * p.speed * speedMult;
+        p.y += Math.sin(angle) * p.speed * speedMult;
+
+        ctx.strokeStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+
+        if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+          p.x = Math.random() * canvas.width;
+          p.y = Math.random() * canvas.height;
+        }
+      }
+    }
+
+    function stepStrangeAttractor() {
+      if (appState.p3 < 98) {
+        ctx.fillStyle = `rgba(5, 6, 10, ${(100 - appState.p3) * 0.003})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      const a = -2.2 + (appState.p1 / 100) * 4.4;
+      const b = -2.2 + (appState.p2 / 100) * 4.4;
+      const c = -1.8 + (appState.p3 / 100) * 3.6;
+      const d = -1.8 + (appState.p4 / 100) * 3.6;
+
+      const colors = palettes[appState.palette];
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = Math.min(canvas.width, canvas.height) * 0.19;
+
+      for (let i = 0; i < 2200; i++) {
+        const nx = Math.sin(a * attractorPoint.y) + c * Math.cos(a * attractorPoint.x);
+        const ny = Math.sin(b * attractorPoint.x) + d * Math.cos(b * attractorPoint.y);
+        attractorPoint.x = nx;
+        attractorPoint.y = ny;
+
+        const px = cx + nx * scale;
+        const py = cy + ny * scale;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(px, py, 1.25, 1.25);
+      }
+    }
+
+    function initGameOfLife(randomSeed = true) {
+      lifeCols = Math.floor(canvas.width / cellSize);
+      lifeRows = Math.floor(canvas.height / cellSize);
+      const density = 0.12 + (appState.p4 / 100) * 0.35;
+      lifeGrid = new Array(lifeCols);
+      for (let x = 0; x < lifeCols; x++) {
+        lifeGrid[x] = new Array(lifeRows);
+        for (let y = 0; y < lifeRows; y++) {
+          lifeGrid[x][y] = randomSeed && Math.random() < density ? 1 : 0;
+        }
+      }
+    }
+
+    function stepGameOfLife() {
+      const trailAlpha = Math.max(0.08, (105 - appState.p3) / 100);
+      ctx.fillStyle = `rgba(5, 6, 10, ${trailAlpha})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const colors = palettes[appState.palette];
+      const next = new Array(lifeCols);
+
+      for (let x = 0; x < lifeCols; x++) {
+        next[x] = new Array(lifeRows);
+        for (let y = 0; y < lifeRows; y++) {
+          let neighbors = 0;
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = (x + dx + lifeCols) % lifeCols;
+              const ny = (y + dy + lifeRows) % lifeRows;
+              if (lifeGrid[nx][ny] > 0) neighbors++;
+            }
+          }
+
+          const stateVal = lifeGrid[x][y];
+          if (stateVal > 0 && (neighbors === 2 || neighbors === 3)) {
+            next[x][y] = Math.min(stateVal + 1, colors.length);
+          } else if (stateVal === 0 && neighbors === 3) {
+            next[x][y] = 1;
+          } else {
+            next[x][y] = 0;
+          }
+
+          if (next[x][y] > 0) {
+            ctx.fillStyle = colors[(next[x][y] - 1) % colors.length];
+            ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2);
+          }
+        }
+      }
+      lifeGrid = next;
+    }
+
+    function stepPhyllotaxis() {
+      ctx.fillStyle = 'rgba(5, 6, 10, 0.16)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const totalDots = 300 + Math.floor(appState.p4 * 10);
+      const spread = 2.5 + (appState.p1 / 100) * 6.5;
+      const angleOffset = 137.507764 + ((appState.p2 - 50) * 0.04);
+      const rot = appState.tick * 0.012;
+      const colors = palettes[appState.palette];
+
+      for (let n = 0; n < totalDots; n++) {
+        const phi = n * (angleOffset * Math.PI / 180) + rot;
+        const r = spread * Math.sqrt(n);
+        const x = cx + r * Math.cos(phi);
+        const y = cy + r * Math.sin(phi);
+        const radius = 1.5 + (n / totalDots) * 3.2;
+
+        ctx.fillStyle = colors[n % colors.length];
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function syncInspectorUI() {
+      const meta = {
+        flow: {
+          title: `Campo Vetorial Trigonométrico (${particles.length} Partículas)`,
+          p1: ['Escala de Frequência', (0.002 + (appState.p1 / 100) * 0.022).toFixed(4)],
+          p2: ['Velocidade de Deriva', (0.5 + (appState.p2 / 100) * 4.0).toFixed(2)],
+          p3: ['Persistência do Rastro', `${appState.p3}%`],
+          p4: ['Harmônico & Densidade', `${appState.p4}`],
+          formula: 'θ(x,y,t) = [sin(x·s + t) + cos(y·s - t)] · H',
+          desc: 'Milhares de partículas autônomas seguem vetores tangentes de um campo escalar contínuo. Passe ou arraste o mouse para criar vórtices gravitacionais.'
+        },
+        attractor: {
+          title: 'Atrator Estranho de Clifford (Caos Determinístico)',
+          p1: ['Parâmetro Caótico A', (-2.2 + (appState.p1 / 100) * 4.4).toFixed(2)],
+          p2: ['Parâmetro Caótico B', (-2.2 + (appState.p2 / 100) * 4.4).toFixed(2)],
+          p3: ['Parâmetro Caótico C', (-1.8 + (appState.p3 / 100) * 3.6).toFixed(2)],
+          p4: ['Parâmetro Caótico D', (-1.8 + (appState.p4 / 100) * 3.6).toFixed(2)],
+          formula: 'xₙ₊₁ = sin(a·yₙ) + c·cos(a·xₙ) | yₙ₊₁ = sin(b·xₙ) + d·cos(b·yₙ)',
+          desc: 'Equações não-lineares acopladas de Clifford desenhando variedades fractais no espaço de fase (2.200 iterações por quadro).'
+        },
+        life: {
+          title: 'Autômato Celular de Conway (Emergência Complexa)',
+          p1: ['Raio do Pincel de Células', `${Math.max(1, Math.floor(appState.p1 / 20))} cél.`],
+          p2: ['Velocidade de Geração', `${appState.p2}%`],
+          p3: ['Brilho Residual (Afterglow)', `${appState.p3}%`],
+          p4: ['Densidade Inicial da Grade', `${appState.p4}%`],
+          formula: 'B3/S23 : Nasce com 3 vizinhos, Sobrevive com 2 ou 3',
+          desc: 'Sistemas complexos emergindo de regras locais simples. Clique e arraste no Canvas para semear novas colônias vivas em tempo real.'
+        },
+        phyllo: {
+          title: 'Filotaxia Áurea & Geometria Sagrada',
+          p1: ['Expansão Radial (c)', (2.5 + (appState.p1 / 100) * 6.5).toFixed(2)],
+          p2: ['Divergência Angular (φ)', `${(137.5 + (appState.p2 - 50) * 0.04).toFixed(2)}°`],
+          p3: ['Suavidade de Rotação', `${appState.p3}%`],
+          p4: ['Número de Sementes (N)', `${300 + Math.floor(appState.p4 * 10)}`],
+          formula: 'r = c · √n , θ = n · 137.50776° (Ângulo Áureo)',
+          desc: 'Padrão espiral logarítmico encontrado em girassóis, pinhas e galáxias, governado pela razão áurea φ = (1 + √5)/2.'
+        }
+      };
+
+      const cur = meta[appState.engine];
+      document.getElementById('engineStatusTitle').textContent = cur.title;
+      document.getElementById('param1Label').textContent = cur.p1[0];
+      document.getElementById('param1Value').textContent = cur.p1[1];
+      document.getElementById('param2Label').textContent = cur.p2[0];
+      document.getElementById('param2Value').textContent = cur.p2[1];
+      document.getElementById('param3Label').textContent = cur.p3[0];
+      document.getElementById('param3Value').textContent = cur.p3[1];
+      document.getElementById('param4Label').textContent = cur.p4[0];
+      document.getElementById('param4Value').textContent = cur.p4[1];
+      document.getElementById('formulaBox').textContent = cur.formula;
+      document.getElementById('theoryDescription').textContent = cur.desc;
+    }
+
+    let lastFpsTime = performance.now();
+    let frames = 0;
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      frames++;
+      if (now - lastFpsTime >= 1000) {
+        document.getElementById('fpsCounter').textContent = `${frames} FPS`;
+        frames = 0;
+        lastFpsTime = now;
+      }
+
+      if (!appState.running) return;
+      appState.tick++;
+
+      if (appState.engine === 'flow') stepFlowField();
+      else if (appState.engine === 'attractor') stepStrangeAttractor();
+      else if (appState.engine === 'life') {
+        const skip = Math.max(1, Math.floor((105 - appState.p2) / 18));
+        if (appState.tick % skip === 0) stepGameOfLife();
+      } else if (appState.engine === 'phyllo') stepPhyllotaxis();
+    }
+
+    function handleCanvasPointer(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      appState.mouse.x = x;
+      appState.mouse.y = y;
+
+      if (appState.engine === 'life' && appState.mouse.down) {
+        const gx = Math.floor(x / cellSize);
+        const gy = Math.floor(y / cellSize);
+        const brush = Math.max(1, Math.floor(appState.p1 / 20));
+        for (let dx = -brush; dx <= brush; dx++) {
+          for (let dy = -brush; dy <= brush; dy++) {
+            const nx = (gx + dx + lifeCols) % lifeCols;
+            const ny = (gy + dy + lifeRows) % lifeRows;
+            if (lifeGrid[nx]) lifeGrid[nx][ny] = 1;
+          }
+        }
+      }
+    }
+
+    function randomizeParameters() {
+      appState.p1 = Math.floor(15 + Math.random() * 75);
+      appState.p2 = Math.floor(20 + Math.random() * 75);
+      appState.p3 = Math.floor(65 + Math.random() * 33);
+      appState.p4 = Math.floor(25 + Math.random() * 70);
+
+      document.getElementById('param1Slider').value = appState.p1;
+      document.getElementById('param2Slider').value = appState.p2;
+      document.getElementById('param3Slider').value = appState.p3;
+      document.getElementById('param4Slider').value = appState.p4;
+
+      clearCanvasBackground();
+      if (appState.engine === 'flow') initFlowParticles();
+      if (appState.engine === 'life') initGameOfLife(true);
+      syncInspectorUI();
+      notifyToast('Novos parâmetros matemáticos gerados!');
+    }
+
+    window.addEventListener('load', () => {
+      resizeStage();
+      window.addEventListener('resize', resizeStage);
+      syncInspectorUI();
+      requestAnimationFrame(animate);
+
+      canvas.addEventListener('mousedown', (e) => {
+        appState.mouse.down = true;
+        handleCanvasPointer(e);
+      });
+      canvas.addEventListener('mousemove', handleCanvasPointer);
+      window.addEventListener('mouseup', () => {
+        appState.mouse.down = false;
+        appState.mouse.x = -9999;
+        appState.mouse.y = -9999;
+      });
+
+      document.querySelectorAll('.engine-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          appState.engine = btn.dataset.engine;
+          document.querySelectorAll('.engine-tab-btn').forEach((b) => {
+            b.className = 'engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+          });
+          btn.className = 'engine-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 transition';
+          clearCanvasBackground();
+          if (appState.engine === 'flow') initFlowParticles();
+          if (appState.engine === 'life') initGameOfLife(true);
+          syncInspectorUI();
+        });
+      });
+
+      document.querySelectorAll('.palette-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          appState.palette = btn.dataset.palette;
+          document.querySelectorAll('.palette-btn').forEach((b) => {
+            b.className = 'palette-btn px-2.5 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800';
+          });
+          btn.className = 'palette-btn px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 font-medium';
+          if (appState.engine === 'flow') initFlowParticles();
+          if (appState.engine === 'attractor') clearCanvasBackground();
+        });
+      });
+
+      ['1', '2', '3', '4'].forEach((idx) => {
+        document.getElementById(`param${idx}Slider`).addEventListener('input', (e) => {
+          appState[`p${idx}`] = Number(e.target.value);
+          if (appState.engine === 'attractor') clearCanvasBackground();
+          if (appState.engine === 'flow' && idx === '4') initFlowParticles();
+          syncInspectorUI();
+        });
+      });
+
+      document.querySelectorAll('.seed-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const seed = btn.dataset.seed;
+          if (seed === '1') {
+            appState.p1 = 22; appState.p2 = 82; appState.p3 = 88; appState.p4 = 74;
+          } else if (seed === '2') {
+            appState.p1 = 78; appState.p2 = 34; appState.p3 = 92; appState.p4 = 30;
+          } else {
+            appState.p1 = 50; appState.p2 = 50; appState.p3 = 96; appState.p4 = 85;
+          }
+          document.getElementById('param1Slider').value = appState.p1;
+          document.getElementById('param2Slider').value = appState.p2;
+          document.getElementById('param3Slider').value = appState.p3;
+          document.getElementById('param4Slider').value = appState.p4;
+          clearCanvasBackground();
+          if (appState.engine === 'flow') initFlowParticles();
+          if (appState.engine === 'life') initGameOfLife(true);
+          syncInspectorUI();
+          notifyToast(`Semente matemática #${seed} carregada!`);
+        });
+      });
+
+      document.getElementById('pauseResumeBtn').addEventListener('click', (e) => {
+        appState.running = !appState.running;
+        e.target.textContent = appState.running ? 'Pausar' : 'Continuar';
+      });
+
+      document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+        clearCanvasBackground();
+        if (appState.engine === 'life') initGameOfLife(false);
+        notifyToast('Canvas limpo!');
+      });
+
+      document.getElementById('mutateParamsBtn').addEventListener('click', randomizeParameters);
+
+      document.getElementById('exportPngBtn').addEventListener('click', () => {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `algorithmic-art-${appState.engine}-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+        notifyToast('Arte exportada em PNG de alta resolução!');
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          appState.running = !appState.running;
+          document.getElementById('pauseResumeBtn').textContent = appState.running ? 'Pausar' : 'Continuar';
+        } else if (e.key === 'r' || e.key === 'R') {
+          randomizeParameters();
+        } else if (e.key === 'c' || e.key === 'C') {
+          clearCanvasBackground();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
